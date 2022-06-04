@@ -159,14 +159,16 @@ transaction(address: Address) {
 
 Day 3
 Why did we add a Collection to this contract? List the two main reasons.
+because it is super annoying and inefficient to have to specify a different storage path for a resource type we want to add to our account and to have to remember each individual path a certain one was given and to give others the ability to send us NFTs
 
 What do you have to do if you have resources "nested" inside of another resource? ("Nested resources")
+any nested resources must be destroyed 
 
 Brainstorm some extra things we may want to add to this contract. Think about what might be problematic with this contract and how we could fix it.
-
 Idea #1: Do we really want everyone to be able to mint an NFT? 🤔.
-
+no, it is better to only have the admin being able to mint
 Idea #2: If we want to read information about our NFTs inside our Collection, right now we have to take it out of the Collection to do so. Is this good?
+better to use references so we do not move the information
 
 
 Day 4
@@ -196,29 +198,30 @@ pub contract CryptoPoops {
   }
 
   // This is a resource interface that allows us to... you get the point.
+  //This is a resource interface with 3 functions, if we have other functions we can make them restrictive because they are not in the interface
   pub resource interface CollectionPublic {
     pub fun deposit(token: @NFT)
     pub fun getIDs(): [UInt64]
     pub fun borrowNFT(id: UInt64): &NFT
   }
-
+//This is a resource with 1 variable and diferent functions, with at least, the sames as the interface
   pub resource Collection: CollectionPublic {
     pub var ownedNFTs: @{UInt64: NFT}
-
+//Function called deposit that move the NFT to a dictionary 
     pub fun deposit(token: @NFT) {
       self.ownedNFTs[token.id] <-! token
     }
-
+//Function called withdraw that we remove from the dictionary
     pub fun withdraw(withdrawID: UInt64): @NFT {
       let nft <- self.ownedNFTs.remove(key: withdrawID) 
               ?? panic("This NFT does not exist in this Collection.")
       return <- nft
     }
-
+//Function called getids to get the key of the nft
     pub fun getIDs(): [UInt64] {
       return self.ownedNFTs.keys
     }
-
+//Function borrownft tat borrows it
     pub fun borrowNFT(id: UInt64): &NFT {
       return &self.ownedNFTs[id] as &NFT
     }
@@ -231,17 +234,17 @@ pub contract CryptoPoops {
       destroy self.ownedNFTs
     }
   }
-
+//create an EmptyCollection
   pub fun createEmptyCollection(): @Collection {
     return <- create Collection()
   }
-
+//New Resource called Minter with 2 functions
   pub resource Minter {
-
+//Function to create an NFT with the variable we initialize before
     pub fun createNFT(name: String, favouriteFood: String, luckyNumber: Int): @NFT {
       return <- create NFT(_name: name, _favouriteFood: favouriteFood, _luckyNumber: luckyNumber)
     }
-
+//Function that create Minters. which seems are the ones who can mint 
     pub fun createMinter(): @Minter {
       return <- create Minter()
     }
