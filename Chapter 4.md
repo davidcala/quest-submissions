@@ -1,35 +1,160 @@
 Day 1
 Explain what lives inside of an account.
+Contract and data
 
 What is the difference between the /storage/, /public/, and /private/ paths?
+in the storage account only de accoun owner can have access, public is available for everyone and private is only available to the owner and the people that the owner gives acces.
 
 What does .save() do? What does .load() do? What does .borrow() do?
+save - save the data in some storage path, it inserts data.
+load - remove the data
+borrow - view the data
 
 Explain why we couldn't save something to our account storage inside of a script.
+Scripts are only to view data.
 
 Explain why I couldn't save something to your account.
+Because you do not have authorization.
 
 Define a contract that returns a resource that has at least 1 field in it. Then, write 2 transactions:
+pub contract C4D1 {
+
+    pub resource Calendar { 
+        pub var month: String 
+        
+        init() { 
+            self.month = "June" 
+        }
+    }
+
+    pub fun createCalendar(): @Calendar { 
+    return <- create Calendar() 
+    }
+}   
 
 A transaction that first saves the resource to account storage, then loads it out of account storage, logs a field inside the resource, and destroys it.
 
+import C4D1 from 0x01 
+
+transaction() { 
+  prepare(signer: AuthAccount) { 
+  
+  let oneMonth <- C4D1.createCalendar() 
+  signer.save(<- oneMonth, to: /storage/MyCalendar)
+  let outMonth <- signer.load<@C4D1.Calendar>(from: /storage/MyCalendar)!
+  log(outMonth.month)
+  
+  destroy outMonth
+  }
+
+  execute {
+
+  } 
+}
+
 A transaction that first saves the resource to account storage, then borrows a reference to it, and logs a field inside the resource.
+
+import C4D1 from 0x01 
+
+transaction() { 
+  prepare(signer: AuthAccount) { 
+  
+  let oneMonth <- C4D1.createCalendar() 
+  signer.save(<- oneMonth, to: /storage/MyCalendar)
+  let outMonth = signer.borrow<&C4D1.Calendar>(from: /storage/MyCalendar) ?? panic ("No results, check it")
+  log(outMonth.month)
+  }
+
+  execute {
+
+  } 
+}
 
 
 Day 2
 Please answer in the language of your choice.
 
 What does .link() do?
+Put data to the public so we can read 
 
 In your own words (no code), explain how we can use resource interfaces to only expose certain things to the /public/ path.
+To limit utility. Is important to use it so we can limit the funcions people outside can use. As for now seems good to avoid writing functions in the interface but yes in the resource.
 
 Deploy a contract that contains a resource that implements a resource interface. Then, do the following:
+pub contract C4D2 {
+
+pub resource interface ICalendar { 
+  pub var name: String 
+}
+
+pub resource Calendar: ICalendar { 
+  pub var name: String
+
+  pub fun changeName(newName: String) {
+    self.name = newName
+  }
+
+  init() {
+    self.name = "June"
+  }
+}
+  pub fun createCalendar(): @Calendar {
+    return <- create Calendar() 
+  }
+}
 
 In a transaction, save the resource to storage and link it to the public with the restrictive interface.
 
+import C4D2 from 0x02
+
+transaction() { 
+  prepare(signer: AuthAccount) { 
+  
+  signer.save(<- C4D2.createCalendar(), to: /storage/MyCalendar2)
+  signer.link<&C4D2.Calendar{C4D2.ICalendar}>(/public/MyCalendar2, target: /storage/MyCalendar2)
+
+  }
+
+  execute {
+
+  } 
+}
+
 Run a script that tries to access a non-exposed field in the resource interface, and see the error pop up.
 
+import C4D2 from 0x02
+
+transaction(address: Address) { 
+  prepare(signer: AuthAccount) {
+  }
+
+  execute { 
+    let publicCapability: Capability<&C4D2.Calendar> = getAccount(address).getCapability<&C4D2.Calendar>(/public/MyCalendar2)
+
+    let calendar: &C4D2.Calendar = publicCapability.borrow() 
+        ?? panic("The capability doesn't exist or you did not specify the right type when you got the capability.")
+
+    calendar.changeName(newName: "May")
+  } 
+}
+
 Run the script and access something you CAN read from. Return it from the script.
+
+import C4D2 from 0x02
+
+transaction(address: Address) { 
+  prepare(signer: AuthAccount) {
+  }
+
+  execute { 
+    let publicCapability: Capability<&C4D2.Calendar{C4D2.ICalendar}> = getAccount(address).getCapability<&C4D2.Calendar{C4D2.ICalendar}>(/public/MyCalendar2)
+
+    let calendar: &C4D2.Calendar{C4D2.ICalendar} = publicCapability.borrow() 
+        ?? panic("The capability doesn't exist or you did not specify the right type when you got the capability.")
+
+    calendar.name
+  } 
+}
 
 
 Day 3
