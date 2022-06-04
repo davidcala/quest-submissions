@@ -1,16 +1,56 @@
 Day 1
 Describe what an event is, and why it might be useful to a client.
+events are used to communicate to the outside world that something happened
 
 Deploy a contract with an event in it, and emit the event somewhere else in the contract indicating that it happened.
+pub contract C5D1 {
+
+  pub event EventDay (id: UInt64)
+
+  pub resource NewDay { 
+    pub let id: UInt64
+    init() {
+      self.id = self.uuid
+      emit Day (id: self.id)
+    }
+  }
+}
 
 Using the contract in step 2), add some pre conditions and post conditions to your contract to get used to writing them out.
+
+pub contract C5D1 {
+
+  pub event EventDay (id: UInt64)
+
+  pub resource Day { 
+    pub let id: UInt64
+
+    pub fun newDay(date:Int): Int{
+    pre{
+      date > 9  && date =< 31: "The date must have two digits"
+    }
+    return date
+    }
+
+    pub fun monhtDate(month: String){
+    post{
+      month.length >= 2: "No month with this lenght"
+    }
+    log(month)
+    }
+    init() {
+      self.id = self.uuid
+      emit EventDay (id: self.id)
+    }
+  }
+}
 
 For each of the functions below (numberOne, numberTwo, numberThree), follow the instructions.
 
 pub contract Test {
 
   // TODO
-  // Tell me whether or not this function will log the name.
+  // Tell me whether or not this function will log the name. YES
   // name: 'Jacob'
   pub fun numberOne(name: String) {
     pre {
@@ -20,7 +60,7 @@ pub contract Test {
   }
 
   // TODO
-  // Tell me whether or not this function will return a value.
+  // Tell me whether or not this function will return a value. YES
   // name: 'Jacob'
   pub fun numberTwo(name: String): String {
     pre {
@@ -36,8 +76,8 @@ pub contract Test {
     pub var number: Int
 
     // TODO
-    // Tell me whether or not this function will log the updated number.
-    // Also, tell me the value of `self.number` after it's run.
+    // Tell me whether or not this function will log the updated number. NO
+    // Also, tell me the value of `self.number` after it's run. =1
     pub fun numberThree(): Int {
       post {
         before(self.number) == result + 1
@@ -57,8 +97,10 @@ pub contract Test {
 
 Day 2
 Explain why standards can be beneficial to the Flow ecosystem.
+singular way with interacting with contracts, ensures a contract is what it claims to be, marketplace dapps can interact with them with certain expectations
 
 What is YOUR favourite food?
+Carbonara, only with spaguetti
 
 Please fix this code (Hint: There are two things wrong):
 
@@ -85,7 +127,8 @@ pub contract interface ITest {
   }
 }
 The implementing contract:
-
+//missing to import the contract interface ITest "import ITest from 0x01"
+//must implement contract interface ITest in pub contract Test "pub contract Test: ITest"
 pub contract Test {
   pub var number: Int
   
