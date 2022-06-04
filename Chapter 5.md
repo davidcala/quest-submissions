@@ -156,8 +156,10 @@ pub contract Test {
 
 Day 3
 What does "force casting" with as! do? Why is it useful in our Collection?
+we can use it to check if token is @NFT type, otherwise 'panic'
 
 What does auth do? When do we use it?
+allows us to call an authorized reference, we can use it if we want to downcast a reference auth, it must be used to call the reference
 
 This last quest will be your most difficult yet. Take this contract:
 
@@ -240,6 +242,75 @@ pub contract CryptoPoops: NonFungibleToken {
     self.account.save(<- create Minter(), to: /storage/Minter)
   }
 }
-and add a function called borrowAuthNFT just like we did in the section called "The Problem" above. Then, find a way to make it publically accessible to other people so they can read our NFT's metadata. Then, run a script to display the NFTs metadata for a certain id.
+and add a function called borrowAuthNFT just like we did in the section called "The Problem" above.
+pub fun borrowAuthNFT(id: UInt64): &NFT {
+  let ref = &self.ownedNFTs[id] as auth &NonfungibleToken.NFT
+  return ref as! &NFT
+}
+
+Then, find a way to make it publically accessible to other people so they can read our NFT's metadata. 
+pub resource interface MyCollection { 
+  pub fun borrowAuthNFT(id: UInt64): &NFT
+}
+
+Then, run a script to display the NFTs metadata for a certain id.
 
 You will have to write all the transactions to set up the accounts, mint the NFTs, and then the scripts to read the NFT's metadata. We have done most of this in the chapters up to this point, so you can look for help there :)
+
+import CryptoPoops from 0x03
+import NonFungibleToken from 0x02
+
+transaction {
+
+  prepare(acct: AuthAccount) {
+
+  acct.save(<- CryptoPoops.createEmptyCollection(), to: /storage/Collection1)
+
+
+  acct.link<&CryptoPoops.Collection{NonFungibleToken.Provider, NonFungibleToken.Receiver, 
+                                      NonFungibleToken.CollectionPublic, CryptoPoops.CollectionAuth}>
+                                        (/public/Collection1, target: /storage/Collection1)
+  }
+
+  execute {
+    log("we saved a Collection to our storage")
+  }
+}
+
+
+import CryptoPoops from 0x03
+import NonFungibleToken from 0x02
+
+transaction(name: String, favouriteFood: String, luckyNumber: Int, recipient: Address) {
+
+    prepare(admin: AuthAccount) {
+        let minterRef = admin.borrow<&CryptoPoops.Minter>(from: /storage/Minter)
+                            ?? panic("This is not Admin")
+        let nft <- minterRef.createNFT(name: name, favouriteFood: favouriteFood, luckyNumber: luckyNumber)
+
+        let CollectionRef = getAccount(recipient).getCapability(/public/Collection1)
+                                .borrow<&CryptoPoops.Collection{NonFungibleToken.Receiver}>()
+                                    ?? panic("Collection does not exist")
+
+        log(nft.id)
+
+        CollectionRef.deposit(token: <- nft)
+    }
+
+    execute {
+        log("We deposited and NFT to our Collection")
+    }
+}
+
+
+Script
+import CryptoPoops from 0x03
+
+pub fun main(address: Address, id: UInt64): String {
+  let ref = getAccount(address).getCapability<&CryptoPoops.Collection{CryptoPoops.CollectionAuth}>(/public/Collection1)
+            .borrow() ?? panic("Collection does not exist")
+
+  let nftRef: &CryptoPoops.NFT = ref.borrowAuthNFT(id: id)
+  return nftRef.name
+
+}
